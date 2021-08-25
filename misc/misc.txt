@@ -1,0 +1,3 @@
+rsync -asP --no-perms --no-owner --no-group --exclude "*.root" --exclude "*__init__*" --exclude "*.svn*" --exclude "*fuse*" --exclude "weights/*" --exclude "temp/*" --exclude "*cmsShow*" --exclude "plots/*" --exclude "documentation/*" --exclude "*sourceFiles*" --exclude "*.pdf" --exclude "*.png" --exclude "*.log" --exclude "*.pyc" --exclude "*_cc.*" --exclude "*.pcm" ./* sobhatta@naf-cms.desy.de:/nfs/dust/cms/user/sobhatta/work/TopTagPol/TreeMaker/CMSSW_10_5_0/src/
+
+`dasgoclient -query="dataset=/TTJets*HT*/*RunIIAutumn18MiniAOD*/MINIAODSIM" | sort -V`
