@@ -70,6 +70,8 @@ namespace TreeOutputInfo
         edm::InputTag tag_jet;
         edm::EDGetTokenT <std::vector <pat::Jet> > tok_jet;
         
+        double minPt;
+        
         double jetRescale_m0;
         std::string str_jetRescale_m0;
         
@@ -166,11 +168,21 @@ namespace TreeOutputInfo
         
         std::vector <std::vector <double> > vv_jet_consti_enFrac_reco;
         
+        std::vector <std::vector <double> > vv_jet_consti_pTwrtJet_reco;
+        std::vector <std::vector <double> > vv_jet_consti_dRwrtJet_reco;
+        
+        
+        std::unordered_map <std::string, std::vector <std::vector <double> > > m_jet_consti_electronInfo_reco;
+        
         
         JetInfo(const edm::ParameterSet &jetPSet, edm::ConsumesCollector &ccollector)
         {
             tag_jet = jetPSet.getParameter <edm::InputTag>("jetCollection");
             tok_jet = ccollector.consumes <std::vector <pat::Jet> >(tag_jet);
+            
+            
+            // Kinematic cut
+            minPt = jetPSet.getParameter <double>("minPt");
             
             
             // Preprocessing
@@ -183,6 +195,7 @@ namespace TreeOutputInfo
             std::replace(str_jetLorentzBoost_e0.begin(), str_jetLorentzBoost_e0.end(), '.', 'p');
             
             jetLorentzBoost_p0 = std::sqrt(jetLorentzBoost_e0*jetLorentzBoost_e0 - jetRescale_m0*jetRescale_m0);
+            
             
             // Soft drop
             apply_sd = jetPSet.getParameter <bool>("apply_sd");
@@ -220,7 +233,7 @@ namespace TreeOutputInfo
                 sprintf(
                     jetName,
                     "%s_"
-                    "sd_%s_%s_%s"
+                    "sd_z%s_b%s_R%s"
                     ,
                     jetName,
                     str_sd_zcut.c_str(), str_sd_beta.c_str(), str_sd_R0.c_str()
@@ -421,8 +434,33 @@ namespace TreeOutputInfo
             sprintf(brName, "jet_%s_consti_LBGS_y_reco", str_jetName.c_str());
             tree->Branch(brName, &vv_jet_consti_LBGS_y_reco);
             
+            //
             sprintf(brName, "jet_%s_consti_enFrac_reco", str_jetName.c_str());
             tree->Branch(brName, &vv_jet_consti_enFrac_reco);
+            
+            //
+            sprintf(brName, "jet_%s_consti_pTwrtJet_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_consti_pTwrtJet_reco);
+            
+            sprintf(brName, "jet_%s_consti_dRwrtJet_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_consti_dRwrtJet_reco);
+        }
+        
+        
+        void createElectronBranches(TTree *tree, const MVAVariableManager <reco::GsfElectron> &eleMvaVarManager)
+        {
+            for(int iVar = 0; iVar < eleMvaVarManager.getNVars(); iVar++)
+            {
+                char brName[2000];
+                sprintf(brName, "jet_%s_consti_%s_reco", str_jetName.c_str(), eleMvaVarManager.getName(iVar).c_str());
+                
+                std::string varName = eleMvaVarManager.getName(iVar);
+                
+                std::vector <std::vector <double> > v_temp;
+                m_jet_consti_electronInfo_reco[varName] = v_temp;
+                
+                tree->Branch(brName, &m_jet_consti_electronInfo_reco[varName]);
+            }
         }
         
         
@@ -506,6 +544,15 @@ namespace TreeOutputInfo
             vv_jet_consti_LBGS_y_reco.clear();
             
             vv_jet_consti_enFrac_reco.clear();
+            
+            vv_jet_consti_pTwrtJet_reco.clear();
+            vv_jet_consti_dRwrtJet_reco.clear();
+            
+            
+            for(auto &kv : m_jet_consti_electronInfo_reco)
+            {
+                kv.second.clear();
+            }
         }
     };
     
@@ -821,7 +868,12 @@ namespace TreeOutputInfo
         }
         
         
-        std::string addJetInfo(const edm::ParameterSet &jetPSet, edm::ConsumesCollector &ccollector, TTree *tree)
+        std::string addJetInfo(
+            const edm::ParameterSet &jetPSet,
+            edm::ConsumesCollector &ccollector,
+            TTree *tree,
+            const MVAVariableManager <reco::GsfElectron> &eleMvaVarManager
+        )
         {
             JetInfo *jetInfo = new JetInfo(jetPSet, ccollector);
             
@@ -832,6 +884,7 @@ namespace TreeOutputInfo
             }
             
             jetInfo->createBranches(tree);
+            jetInfo->createElectronBranches(tree, eleMvaVarManager);
             
             m_jetInfo[jetInfo->str_jetName] = jetInfo;
             
@@ -928,9 +981,9 @@ namespace TreeOutputInfo
             rho = 0;
             
             
-            for(auto const &ele : m_jetInfo)
+            for(auto const &kv : m_jetInfo)
             {
-                ele.second->clear();
+                kv.second->clear();
             }
         }
     };

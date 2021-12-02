@@ -109,7 +109,7 @@ namespace Common
     }
     
     
-    bool isLeptonicTopWZ(const reco::GenParticle *partOrig, bool includeTaus = false)
+    int isLeptonicTopWZ(const reco::GenParticle *partOrig, bool includeTaus = false)
     {
         const reco::GenParticle *part = getLastCopy(partOrig);
         
@@ -125,7 +125,7 @@ namespace Common
             {
                 if(daughterId == 11 || daughterId == 13 || (includeTaus && daughterId == 15))
                 {
-                    return true;
+                    return daughterId;
                 }
             }
             
@@ -138,7 +138,7 @@ namespace Common
             }
         }
         
-        return false;
+        return 0;
     }
     
     

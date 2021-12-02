@@ -55,6 +55,8 @@
 # include "FWCore/Utilities/interface/InputTag.h"
 # include "Geometry/Records/interface/CaloGeometryRecord.h"
 # include "Geometry/Records/interface/IdealGeometryRecord.h"
+# include "RecoEgamma/EgammaTools/interface/MVAVariableHelper.h"
+# include "RecoEgamma/EgammaTools/interface/MVAVariableManager.h"
 # include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
 # include "SimDataFormats/CaloAnalysis/interface/CaloParticle.h"
 # include "SimDataFormats/CaloAnalysis/interface/SimCluster.h"
@@ -66,6 +68,7 @@
 # include <Math/VectorUtil.h>
 # include <TH1F.h>
 # include <TH2F.h>
+# include <TLorentzVector.h>
 # include <TMatrixD.h>
 # include <TTree.h> 
 # include <TVector2.h> 
@@ -155,12 +158,31 @@ class TreeMaker : public edm::one::EDAnalyzer<edm::one::SharedResources>
     edm::EDGetTokenT <double> tok_rho;
     
     
+    // Electrons //
+    edm::EDGetTokenT <std::vector <pat::Electron> > tok_electron_reco;
+    
+    std::string eleMvaVariablesFile;
+    //MVAVariableManager <pat::Electron> eleMvaVarManager;
+    MVAVariableManager <reco::GsfElectron> eleMvaVarManager;
+    
+    //MVAVariableHelper <pat::Electron> eleMvaVarHelper;
+    MVAVariableHelper <reco::GsfElectron> eleMvaVarHelper;
+    
+    
+    // Muons //
+    edm::EDGetTokenT <std::vector <pat::Muon> > tok_muon_reco;
+    
+    
     // Jets //
     std::vector <edm::InputTag> v_jetCollectionTag;
     std::vector <std::string> v_jetCollectionName;
     std::vector <edm::EDGetTokenT <std::vector <pat::Jet> > > v_tok_jet_reco;
     
     std::vector <edm::ParameterSet> v_recoJetPSet;
+    
+    
+    // Other stuff //
+    
     
 };
 
@@ -175,7 +197,9 @@ class TreeMaker : public edm::one::EDAnalyzer<edm::one::SharedResources>
 //
 // constructors and destructor
 //
-TreeMaker::TreeMaker(const edm::ParameterSet& iConfig)
+TreeMaker::TreeMaker(const edm::ParameterSet& iConfig) :
+    eleMvaVarManager(iConfig.getParameter <std::string>("eleMvaVariablesFile")),
+    eleMvaVarHelper(consumesCollector())
 {
     usesResource("TFileService");
     edm::Service<TFileService> fs;
@@ -193,7 +217,6 @@ TreeMaker::TreeMaker(const edm::ParameterSet& iConfig)
     // My stuff //
     debug = iConfig.getParameter <bool>("debug");
     isGunSample = iConfig.getParameter <bool>("isGunSample");
-    
     
     fj_strategy = fastjet::Best;
     fj_recombScheme = fastjet::E_scheme;
@@ -228,6 +251,17 @@ TreeMaker::TreeMaker(const edm::ParameterSet& iConfig)
     tok_rho = consumes <double>(iConfig.getParameter <edm::InputTag>("label_rho"));
     
     
+    // Electrons //
+    tok_electron_reco = consumes <std::vector <pat::Electron> >(iConfig.getParameter <edm::InputTag>("label_slimmedElectron"));
+    
+    //eleMvaVariablesFile = iConfig.getParameter <std::string>("eleMvaVariablesFile");
+    //eleMvaVarManager(eleMvaVariablesFile, MVAVariableHelper::indexMap());
+    
+    
+    // Muons //
+    tok_muon_reco = consumes <std::vector <pat::Muon> >(iConfig.getParameter <edm::InputTag>("label_slimmedMuon"));
+    
+    
     // Jets //
     v_recoJetPSet = iConfig.getParameter <std::vector <edm::ParameterSet> >("v_recoJetPSet");
     
@@ -235,10 +269,14 @@ TreeMaker::TreeMaker(const edm::ParameterSet& iConfig)
     {
         edm::ConsumesCollector ccollector = consumesCollector();
         
-        std::string jetName = treeOutput->addJetInfo(jetPSet, ccollector, treeOutput->tree);
+        std::string jetName = treeOutput->addJetInfo(jetPSet, ccollector, treeOutput->tree, eleMvaVarManager);
         
         v_jetCollectionName.push_back(jetName);
     }
+    
+    
+    // Other stuff
+    //mvaVarHelper(consumesCollector());
 }
 
 
@@ -282,7 +320,11 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     iEvent.getByToken(tok_generator, generatorHandle);
     GenEventInfoProduct generator = *generatorHandle;
     
-    printf("[%llu] Gen. evt. wt. %0.4g \n", eventNumber, generator.weight());
+    if(debug)
+    {
+        printf("[%llu] Gen. evt. wt. %0.4g \n", eventNumber, generator.weight());
+    }
+    
     treeOutput->genEventWeight = generator.weight();
     
     
@@ -315,24 +357,27 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             treeOutput->v_genTop_phi.push_back(part.phi());
             treeOutput->v_genTop_m.push_back(part.mass());
             
-            bool isLeptonicTop = Common::isLeptonicTopWZ(&part);
+            int isLeptonicTop = Common::isLeptonicTopWZ(&part);
             
             treeOutput->v_genTop_isLeptonic.push_back(isLeptonicTop);
             
             CLHEP::HepLorentzVector genTopVis_4mom = Common::lorentzVector2clhep(Common::getVisibleCompnent(&part));
             v_genTopVis_4mom.push_back(genTopVis_4mom);
             
-            printf(
-                "[%llu] "
-                "Gen t (isLeptonic %d) found (orig/vis): E %0.2f/%0.2f, pT %0.2f/%0.2f, eta %+0.2f/%+0.2f, phi %+0.2f/%+0.2f, "
-                "\n",
-                eventNumber,
-                (int) isLeptonicTop,
-                part.energy(), genTopVis_4mom.e(),
-                part.pt(), genTopVis_4mom.perp(),
-                part.eta(), genTopVis_4mom.eta(),
-                part.phi(), genTopVis_4mom.phi()
-            );
+            if(debug)
+            {
+                printf(
+                    "[%llu] "
+                    "Gen t (isLeptonic %d) found (orig/vis): E %0.2f/%0.2f, pT %0.2f/%0.2f, eta %+0.2f/%+0.2f, phi %+0.2f/%+0.2f, "
+                    "\n",
+                    eventNumber,
+                    (int) isLeptonicTop,
+                    part.energy(), genTopVis_4mom.e(),
+                    part.pt(), genTopVis_4mom.perp(),
+                    part.eta(), genTopVis_4mom.eta(),
+                    part.phi(), genTopVis_4mom.phi()
+                );
+            }
             
             treeOutput->v_genTopVis_E.push_back(genTopVis_4mom.e());
             treeOutput->v_genTopVis_px.push_back(genTopVis_4mom.px());
@@ -359,7 +404,7 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             treeOutput->v_genW_phi.push_back(part.phi());
             treeOutput->v_genW_m.push_back(part.mass());
             
-            bool isLeptonic = Common::isLeptonicTopWZ(&part);
+            int isLeptonic = Common::isLeptonicTopWZ(&part);
             
             treeOutput->v_genW_isLeptonic.push_back(isLeptonic);
             
@@ -367,17 +412,20 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             v_genWvis_4mom.push_back(genWvis_4mom);
             
             
-            printf(
-                "[%llu] "
-                "Gen W (isLeptonic %d) found (orig/vis): E %0.2f/%0.2f, pT %0.2f/%0.2f, eta %+0.2f/%+0.2f, phi %+0.2f/%+0.2f, "
-                "\n",
-                eventNumber,
-                (int) isLeptonic,
-                part.energy(), genWvis_4mom.e(),
-                part.pt(), genWvis_4mom.perp(),
-                part.eta(), genWvis_4mom.eta(),
-                part.phi(), genWvis_4mom.phi()
-            );
+            if(debug)
+            {
+                printf(
+                    "[%llu] "
+                    "Gen W (isLeptonic %d) found (orig/vis): E %0.2f/%0.2f, pT %0.2f/%0.2f, eta %+0.2f/%+0.2f, phi %+0.2f/%+0.2f, "
+                    "\n",
+                    eventNumber,
+                    (int) isLeptonic,
+                    part.energy(), genWvis_4mom.e(),
+                    part.pt(), genWvis_4mom.perp(),
+                    part.eta(), genWvis_4mom.eta(),
+                    part.phi(), genWvis_4mom.phi()
+                );
+            }
             
             
             treeOutput->v_genWvis_E.push_back(genWvis_4mom.e());
@@ -405,24 +453,27 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             treeOutput->v_genZ_phi.push_back(part.phi());
             treeOutput->v_genZ_m.push_back(part.mass());
             
-            bool isLeptonic = Common::isLeptonicTopWZ(&part);
+            int isLeptonic = Common::isLeptonicTopWZ(&part);
             
             treeOutput->v_genZ_isLeptonic.push_back(isLeptonic);
             
             CLHEP::HepLorentzVector genZ_4mom = Common::lorentzVector2clhep(part.p4());
             v_genZ_4mom.push_back(genZ_4mom);
             
-            printf(
-                "[%llu] "
-                "Gen Z (isLeptonic %d) found: E %0.2f, pT %0.2f, eta %+0.2f, phi %+0.2f, "
-                "\n",
-                eventNumber,
-                (int) isLeptonic,
-                part.energy(),
-                part.pt(),
-                part.eta(),
-                part.phi()
-            );
+            if(debug)
+            {
+                printf(
+                    "[%llu] "
+                    "Gen Z (isLeptonic %d) found: E %0.2f, pT %0.2f, eta %+0.2f, phi %+0.2f, "
+                    "\n",
+                    eventNumber,
+                    (int) isLeptonic,
+                    part.energy(),
+                    part.pt(),
+                    part.eta(),
+                    part.phi()
+                );
+            }
         }
     }
     
@@ -499,17 +550,22 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             
             v_secVtxDir.push_back(xyz_secVtxDir);
             
-            printf(
-                "SV %d: "
-                "(x, y, z) (%0.4f, %0.4f, %0.4f), "
-                "(vx, vy, vz) (%0.4f, %0.4f, %0.4f), "
-                "flight dist %f, ndof %f, chi2/ndof %f, "
-                "\n",
-                iSV,
-                sv.position().x(), sv.position().y(), sv.position().z(),
-                sv.vx(), sv.vy(), sv.vz(),
-                std::sqrt(xyz_secVtxDir.mag2()), sv.vertexNdof(), sv.vertexNormalizedChi2()
-            );
+            if(debug)
+            {
+                printf(
+                    "[%llu] "
+                    "SV (%d) found: "
+                    "(x, y, z) (%0.4f, %0.4f, %0.4f), "
+                    "(vx, vy, vz) (%0.4f, %0.4f, %0.4f), "
+                    "flight dist %f, ndof %f, chi2/ndof %f, "
+                    "\n",
+                    eventNumber,
+                    iSV,
+                    sv.position().x(), sv.position().y(), sv.position().z(),
+                    sv.vx(), sv.vy(), sv.vz(),
+                    std::sqrt(xyz_secVtxDir.mag2()), sv.vertexNdof(), sv.vertexNormalizedChi2()
+                );
+            }
         }
         
         nSecVtx++;
@@ -530,6 +586,78 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     double rho = *handle_rho;
     
     treeOutput->rho = rho;
+    
+    
+    // Electrons
+    edm::Handle <std::vector <pat::Electron> > handle_electron_reco;
+    iEvent.getByToken(tok_electron_reco, handle_electron_reco);
+    auto electrons_reco = *handle_electron_reco;
+    
+    int nEle = 0;
+    
+    std::vector <CLHEP::HepLorentzVector> v_ele_4mom;
+    
+    for(const auto &ele : electrons_reco)
+    {
+        edm::Ptr <pat::Electron> elePtr(handle_electron_reco, nEle);
+        
+        nEle++;
+        
+        CLHEP::HepLorentzVector ele_4mom = Common::lorentzVector2clhep(ele.p4());
+        v_ele_4mom.push_back(ele_4mom);
+        
+        auto sc = ele.superCluster();
+        
+        if(debug)
+        {
+            printf(
+                "[%llu] "
+                "ele (%d) found: E %0.2f, pT %0.2f, eta %+0.2f, phi %+0.2f, "
+                "SC E %0.2f, eta %+0.2f, phi %+0.2f"
+                "\n",
+                eventNumber,
+                nEle,
+                ele.energy(), ele.pt(), ele.eta(), ele.phi(),
+                sc->energy(), sc->eta(), sc->phi()
+            );
+        }
+        
+        
+        //std::vector <float> extraVariables = eleMvaVarHelper.getAuxVariables(elePtr, iEvent);
+        //
+        //for(int iVar = 0; iVar < eleMvaVarManager.getNVars(); iVar++)
+        //{
+        //    printf("%s %0.4f, ", eleMvaVarManager.getName(iVar).c_str(), eleMvaVarManager.getValue(iVar, ele, extraVariables));
+        //}
+        //printf("\n");
+    }
+    
+    
+    // Muons
+    edm::Handle <std::vector <pat::Muon> > handle_muon_reco;
+    iEvent.getByToken(tok_muon_reco, handle_muon_reco);
+    auto muons_reco = *handle_muon_reco;
+    
+    int nMu = 0;
+    
+    std::vector <CLHEP::HepLorentzVector> v_mu_4mom;
+    
+    for(const auto &mu : muons_reco)
+    {
+        nMu++;
+        
+        if(debug)
+        {
+            printf(
+                "[%llu] "
+                "mu (%d) found: E %0.2f, pT %0.2f, eta %+0.2f, phi %+0.2f, "
+                "\n",
+                eventNumber,
+                nMu,
+                mu.energy(), mu.pt(), mu.eta(), mu.phi()
+            );
+        }
+    }
     
     
     int iJetCollection = -1;
@@ -557,28 +685,33 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         
         for(const auto &jet : jets_reco)
         {
-            if(jet.pt() < 100)
+            if(jet.pt() < jetInfo->minPt)
             {
                 continue;
             }
             
             nJet++;
             
-            printf(
-                "[%llu] "
-                "%s jet (%d) found: E %0.2f, pT %0.2f, eta %+0.2f, phi %+0.2f, "
-                "nConsti %d, nDaughter %d, "
-                "\n",
-                eventNumber,
-                jetName.c_str(),
-                nJet,
-                jet.energy(), jet.pt(), jet.eta(), jet.phi(),
-                (int) jet.getJetConstituents().size(),
-                //(jet.isPFJet()? (int) jet.getPFConstituents().size() : -1)
-                //jet.isPFJet()
-                //(int) jet.pfCandidatesFwdPtr().size()
-                (int) jet.numberOfDaughters()
-            );
+            if(debug)
+            {
+                printf(
+                    "[%llu] "
+                    "%s jet (%d) found: E %0.2f, pT %0.2f, eta %+0.2f, phi %+0.2f, "
+                    "isPF %d, "
+                    "nConsti %d, nDaughter %d, "
+                    "\n",
+                    eventNumber,
+                    jetName.c_str(),
+                    nJet,
+                    jet.energy(), jet.pt(), jet.eta(), jet.phi(),
+                    (int) jet.isPFJet(),
+                    (int) jet.getJetConstituents().size(),
+                    //(jet.isPFJet()? (int) jet.getPFConstituents().size() : -1),
+                    //jet.isPFJet()
+                    //(int) jet.pfCandidatesFwdPtr().size(),
+                    (int) jet.numberOfDaughters()
+                );
+            }
             
             std::vector <fastjet::PseudoJet> fj_input_jet;
             
@@ -861,6 +994,21 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             
             std::vector <double> v_jet_consti_enFrac_reco;
             
+            std::vector <double> v_jet_consti_pTwrtJet_reco;
+            std::vector <double> v_jet_consti_dRwrtJet_reco;
+            
+            
+            std::unordered_map <std::string, std::vector <double> > m_jet_consti_electronInfo_reco;
+            
+            for(int iVar = 0; iVar < eleMvaVarManager.getNVars(); iVar++)
+            {
+                std::string varName = eleMvaVarManager.getName(iVar);
+                
+                std::vector <double> v_temp(nConsti, -99);
+                m_jet_consti_electronInfo_reco[varName] = v_temp;
+            }
+            
+            
             for(int iConsti = 0; iConsti < nConsti; iConsti++)
             {
                 fastjet::PseudoJet pseudoJet_consti = fj_image.constituents().at(iConsti);
@@ -942,6 +1090,62 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 
                 v_jet_consti_svdxy_reco.push_back(svdxy_min);
                 v_jet_consti_svdz_reco.push_back(svdz_min);
+                
+                
+                // 2D isolation
+               TLorentzVector lv_jet;
+               TLorentzVector lv_consti;
+                
+                lv_jet.SetXYZT(
+                    jet.px(),
+                    jet.py(),
+                    jet.pz(),
+                    jet.energy()
+                );
+                
+                lv_consti.SetXYZT(
+                    consti->px(),
+                    consti->py(),
+                    consti->pz(),
+                    consti->energy()
+                );
+                
+                double pTwrtJet = lv_consti.Vect().Perp(lv_jet.Vect());
+                double dRwrtJet = lv_consti.DeltaR(lv_jet);
+                
+                v_jet_consti_pTwrtJet_reco.push_back(pTwrtJet);
+                v_jet_consti_dRwrtJet_reco.push_back(dRwrtJet);
+                
+                
+                int iEle = -1;
+                int nearestEleIdx = -1;
+                double minDR = 9999;
+                
+                for(const auto &ele : electrons_reco)
+                {
+                    iEle++;
+                    double dR = ROOT::Math::VectorUtil::DeltaR(ele.p4(), consti->p4());
+                    
+                    if(dR < minDR)
+                    {
+                        nearestEleIdx = iEle;
+                        minDR = dR;
+                    }
+                }
+                
+                if(nearestEleIdx >= 0 && minDR < 0.05)
+                {
+                    edm::Ptr <pat::Electron> elePtr(handle_electron_reco, nearestEleIdx);
+                    
+                    std::vector <float> extraVariables = eleMvaVarHelper.getAuxVariables(elePtr, iEvent);
+                    
+                    for(int iVar = 0; iVar < eleMvaVarManager.getNVars(); iVar++)
+                    {
+                        std::string varName = eleMvaVarManager.getName(iVar);
+                        
+                        m_jet_consti_electronInfo_reco[varName].at(iConsti) = eleMvaVarManager.getValue(iVar, *elePtr, extraVariables);
+                    }
+                }
             }
             
             jetInfo->vv_jet_consti_E_reco.push_back(v_jet_consti_E_reco);
@@ -974,6 +1178,17 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             jetInfo->vv_jet_consti_LBGS_y_reco.push_back(v_jet_consti_LBGS_y_reco);
             
             jetInfo->vv_jet_consti_enFrac_reco.push_back(v_jet_consti_enFrac_reco);
+            
+            jetInfo->vv_jet_consti_pTwrtJet_reco.push_back(v_jet_consti_pTwrtJet_reco);
+            jetInfo->vv_jet_consti_dRwrtJet_reco.push_back(v_jet_consti_dRwrtJet_reco);
+            
+            
+            for(int iVar = 0; iVar < eleMvaVarManager.getNVars(); iVar++)
+            {
+                std::string varName = eleMvaVarManager.getName(iVar);
+                
+                jetInfo->m_jet_consti_electronInfo_reco[varName].push_back(m_jet_consti_electronInfo_reco[varName]);
+            }
         }
         
         
@@ -1061,7 +1276,10 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     //iSetup.get<SetupRecord>().get(pSetup);
     //#endif
     
-    printf("\n\n");
+    if(debug)
+    {
+        printf("\n\n");
+    }
     
     fflush(stdout);
     fflush(stderr);

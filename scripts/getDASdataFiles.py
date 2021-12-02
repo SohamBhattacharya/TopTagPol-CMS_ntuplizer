@@ -22,7 +22,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--replace",
-    help = "Will replace \"str1\" with \"str2\": \"str1\" \"str2\"",
+    help = "Will replace \"str1\" with \"str2\": \"str1\" \"str2\" (e.g. \"/store\" \"root://dcache-cms-xrootd.desy.de://pnfs/desy.de/cms/tier2/store\")",
     type = str,
     nargs = 2,
     required = False,
@@ -130,8 +130,8 @@ l_sampleName = [
     "/QCD_Pt_800to1000_TuneCP5_13TeV_pythia8/RunIIAutumn18MiniAOD-PREMIX_RECODEBUG_102X_upgrade2018_realistic_v15_ext1-v1/MINIAODSIM",
     "/QCD_Pt_1000to1400_TuneCP5_13TeV_pythia8/RunIIAutumn18MiniAOD-PREMIX_RECODEBUG_102X_upgrade2018_realistic_v15-v1/MINIAODSIM",
     "/QCD_Pt_1400to1800_TuneCP5_13TeV_pythia8/RunIIAutumn18MiniAOD-PREMIX_RECODEBUG_102X_upgrade2018_realistic_v15_ext1-v1/MINIAODSIM",
-    ##"/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/RunIIAutumn18MiniAOD-PREMIX_RECODEBUG_102X_upgrade2018_realistic_v15_ext1-v1/MINIAODSIM",
-    ##"/QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8/RunIIAutumn18MiniAOD-PREMIX_RECODEBUG_102X_upgrade2018_realistic_v15_ext1-v1/MINIAODSIM",
+    "/QCD_Pt_1800to2400_TuneCP5_13TeV_pythia8/RunIIAutumn18MiniAOD-PREMIX_RECODEBUG_102X_upgrade2018_realistic_v15_ext1-v1/MINIAODSIM",
+    "/QCD_Pt_2400to3200_TuneCP5_13TeV_pythia8/RunIIAutumn18MiniAOD-PREMIX_RECODEBUG_102X_upgrade2018_realistic_v15_ext1-v1/MINIAODSIM",
 
 ]
 

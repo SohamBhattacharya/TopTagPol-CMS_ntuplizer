@@ -57,7 +57,7 @@ options.register("outFileBaseName",
     "ntupleTree", # Default value
     VarParsing.VarParsing.multiplicity.singleton, # singleton or list
     VarParsing.VarParsing.varType.string, # string, int, or float
-    "Output file base name: [base name].root" # Description
+    "Output file base name (w/o extension): [base name].root" # Description
 )
 
 options.register("outFileNumber",
@@ -93,6 +93,14 @@ options.register("genPartonFilter",
     VarParsing.VarParsing.multiplicity.singleton, # singleton or list
     VarParsing.VarParsing.varType.int, # string, int, or float
     "Apply gen-parton filter" # Description
+)
+
+options.register("eleMvaVariablesFile",
+    #"RecoEgamma/ElectronIdentification/data/ElectronMVAEstimatorRun2Fall17V1Variables.txt", # Default value
+    "MyTools/EDAnalyzers/data/ElectronMVAEstimatorRun2Variables.txt", # Default value
+    VarParsing.VarParsing.multiplicity.singleton, # singleton or list
+    VarParsing.VarParsing.varType.string, # string, int, or float
+    "MVA variables file" # Description
 )
 
 options.register("trace",
@@ -131,7 +139,8 @@ process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(options.maxEv
 
 #sourceFile = "sourceFiles/TT_Mtt-700to1000_TuneCP5_PSweights_13TeV-powheg-pythia8_RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v8_MINIAODSIM/TT_Mtt-700to1000_TuneCP5_PSweights_13TeV-powheg-pythia8_RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14-v8_MINIAODSIM.txt"
 #sourceFile = "sourceFiles/TT_Mtt-1000toInf_TuneCP5_PSweights_13TeV-powheg-pythia8_RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14_ext1-v1_MINIAODSIM/TT_Mtt-1000toInf_TuneCP5_PSweights_13TeV-powheg-pythia8_RunIIFall17MiniAODv2-PU2017_12Apr2018_94X_mc2017_realistic_v14_ext1-v1_MINIAODSIM.txt"
-sourceFile = "sourceFiles/ZprimeToTT_M1000_W10_TuneCP2_PSweights_13TeV-madgraphMLM-pythia8_RunIIAutumn18MiniAOD-102X_upgrade2018_realistic_v15-v1_MINIAODSIM/ZprimeToTT_M1000_W10_TuneCP2_PSweights_13TeV-madgraphMLM-pythia8_RunIIAutumn18MiniAOD-102X_upgrade2018_realistic_v15-v1_MINIAODSIM.txt"
+#sourceFile = "sourceFiles/ZprimeToTT_M1000_W10_TuneCP2_PSweights_13TeV-madgraphMLM-pythia8_RunIIAutumn18MiniAOD-102X_upgrade2018_realistic_v15-v1_MINIAODSIM/ZprimeToTT_M1000_W10_TuneCP2_PSweights_13TeV-madgraphMLM-pythia8_RunIIAutumn18MiniAOD-102X_upgrade2018_realistic_v15-v1_MINIAODSIM.txt"
+sourceFile = "sourceFiles/ZprimeToTT_M2000_W20_TuneCP2_PSweights_13TeV-madgraphMLM-pythia8_RunIIAutumn18MiniAOD-102X_upgrade2018_realistic_v15-v1_MINIAODSIM/ZprimeToTT_M2000_W20_TuneCP2_PSweights_13TeV-madgraphMLM-pythia8_RunIIAutumn18MiniAOD-102X_upgrade2018_realistic_v15-v1_MINIAODSIM.txt"
 
 if (len(options.sourceFile)) :
     
@@ -276,6 +285,8 @@ process.bVertexFilter = cms.EDFilter(
 recoJetPSet = cms.PSet(
     jetCollection = cms.InputTag(""),
     
+    minPt = cms.double(100),
+    
     apply_sd = cms.bool(True),
     sd_zcut = cms.string("0.1"),
     sd_beta = cms.string("0"),
@@ -295,6 +306,7 @@ process.treeMaker = cms.EDAnalyzer(
     debug = cms.bool(False),
     isGunSample = cms.bool(bool(options.isGunSample)),
     
+    eleMvaVariablesFile = cms.string(options.eleMvaVariablesFile),
     
     ############################## GEN ##############################
     
@@ -312,7 +324,24 @@ process.treeMaker = cms.EDAnalyzer(
     label_rho = cms.InputTag("fixedGridRhoFastjetAll"),
     
     
+    label_slimmedElectron = cms.InputTag("slimmedElectrons"),
+    label_slimmedMuon = cms.InputTag("slimmedMuons"),
+    
+    
     v_recoJetPSet = cms.VPSet(
+        # AK4
+        recoJetPSet.clone(
+            jetCollection = cms.InputTag("slimmedJetsPuppi"),
+            minPt = cms.double(10),
+        ),
+        
+        recoJetPSet.clone(
+            jetCollection = cms.InputTag("slimmedJetsPuppi"),
+            minPt = cms.double(10),
+            apply_sd = cms.bool(False),
+        ),
+        
+        
         # AK8
         recoJetPSet.clone(
             jetCollection = cms.InputTag("selectedPatJetsAK8PFPuppi"),
