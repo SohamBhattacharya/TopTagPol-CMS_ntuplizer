@@ -172,6 +172,11 @@ class TreeMaker : public edm::one::EDAnalyzer<edm::one::SharedResources>
     // Muons //
     edm::EDGetTokenT <std::vector <pat::Muon> > tok_muon_reco;
     
+    std::string muMvaVariablesFile;
+    MVAVariableManager <pat::Muon> muMvaVarManager;
+    MVAVariableHelper <pat::Muon> muMvaVarHelper; // Just a dummy, don't need it for muons
+    
+    
     
     // Jets //
     std::vector <edm::InputTag> v_jetCollectionTag;
@@ -199,7 +204,9 @@ class TreeMaker : public edm::one::EDAnalyzer<edm::one::SharedResources>
 //
 TreeMaker::TreeMaker(const edm::ParameterSet& iConfig) :
     eleMvaVarManager(iConfig.getParameter <std::string>("eleMvaVariablesFile")),
-    eleMvaVarHelper(consumesCollector())
+    eleMvaVarHelper(consumesCollector()),
+    muMvaVarManager(iConfig.getParameter <std::string>("muMvaVariablesFile")),
+    muMvaVarHelper(consumesCollector())
 {
     usesResource("TFileService");
     edm::Service<TFileService> fs;
@@ -269,7 +276,7 @@ TreeMaker::TreeMaker(const edm::ParameterSet& iConfig) :
     {
         edm::ConsumesCollector ccollector = consumesCollector();
         
-        std::string jetName = treeOutput->addJetInfo(jetPSet, ccollector, treeOutput->tree, eleMvaVarManager);
+        std::string jetName = treeOutput->addJetInfo(jetPSet, ccollector, treeOutput->tree, eleMvaVarManager, muMvaVarManager);
         
         v_jetCollectionName.push_back(jetName);
     }
@@ -679,12 +686,15 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         iEvent.getByToken(jetInfo->tok_jet, handle_jet_reco);
         auto jets_reco = *handle_jet_reco;
         
+        int iJet = -1;
         int nJet = 0;
         
         std::vector <CLHEP::HepLorentzVector> v_jet_4mom;
         
         for(const auto &jet : jets_reco)
         {
+            iJet++;
+            
             if(jet.pt() < jetInfo->minPt)
             {
                 continue;
@@ -692,24 +702,31 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             
             nJet++;
             
-            if(debug)
+            //edm::Ptr <pat::Jet> jetPtr(handle_jet_reco, iJet);
+            //const reco::PFJet *cj = dynamic_cast<const reco::PFJet *>(jetPtr.get());
+            ////pat::PFCandidateFwdPtrCollection iparticlesRef;
+            //std::vector<reco::PFCandidatePtr> iparticles = cj->getPFConstituents();
+            
+            //if(debug)
             {
                 printf(
                     "[%llu] "
                     "%s jet (%d) found: E %0.2f, pT %0.2f, eta %+0.2f, phi %+0.2f, "
                     "isPF %d, "
                     "nConsti %d, nDaughter %d, "
+                    //"%d, "
                     "\n",
                     eventNumber,
                     jetName.c_str(),
                     nJet,
                     jet.energy(), jet.pt(), jet.eta(), jet.phi(),
                     (int) jet.isPFJet(),
-                    (int) jet.getJetConstituents().size(),
+                    (int) jet.getJetConstituents().size(), (int) jet.numberOfDaughters()
                     //(jet.isPFJet()? (int) jet.getPFConstituents().size() : -1),
                     //jet.isPFJet()
                     //(int) jet.pfCandidatesFwdPtr().size(),
-                    (int) jet.numberOfDaughters()
+                    //(int) jet.pfCandidatesFwdPtr().size()
+                    //(int) iparticles.size()
                 );
             }
             
@@ -1004,9 +1021,46 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             {
                 std::string varName = eleMvaVarManager.getName(iVar);
                 
-                std::vector <double> v_temp(nConsti, -99);
+                std::vector <double> v_temp(nConsti, Constants::DEFAULT_BRANCH_ENTRY);
                 m_jet_consti_electronInfo_reco[varName] = v_temp;
             }
+            
+            std::unordered_map <std::string, std::vector <double> > m_jet_consti_muonInfo_reco;
+            
+            for(int iVar = 0; iVar < muMvaVarManager.getNVars(); iVar++)
+            {
+                std::string varName = muMvaVarManager.getName(iVar);
+                
+                std::vector <double> v_temp(nConsti, Constants::DEFAULT_BRANCH_ENTRY);
+                m_jet_consti_muonInfo_reco[varName] = v_temp;
+            }
+            
+            
+            //int iEle = 0;
+            //std::vector v_jet_consti_nearestEleIdx;
+            //
+            //for(const auto &ele : electrons_reco)
+            //{
+            //    iEle++;
+            //    
+            //    int nearestEleIdx = -1;
+            //    double minDR = 9999;
+            //    nearest
+            //    
+            //    for(int iConsti = 0; iConsti < nConsti; iConsti++)
+            //    {
+            //        int idx = pseudoJet_consti.user_index();
+            //        const auto &consti = v_jet_consti.at(idx);
+            //        
+            //        double dR = ROOT::Math::VectorUtil::DeltaR(ele.p4(), consti->p4());
+            //        
+            //        if(dR < minDR)
+            //        {
+            //            nearestEleIdx = iEle;
+            //            minDR = dR;
+            //        }
+            //    }
+            //}
             
             
             for(int iConsti = 0; iConsti < nConsti; iConsti++)
@@ -1020,6 +1074,10 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 int idx = pseudoJet_consti.user_index();
                 
                 const auto &consti = v_jet_consti.at(idx);
+                
+                //edm::Ptr <reco::PFCandidate> constiPF(consti);
+                //std::cout << iConsti << " " << constiPF.isNonnull() << "\n"; std::fflush(stdout);
+                //std::cout << iConsti << " " << constiPF->gsfElectronRef().isNonnull() << "\n"; std::fflush(stdout);
                 
                 //In the rare cases that a jet as < 3 constituents, the ratio can slightly exceed 1 due to precision, etc.
                 enFrac = std::min(enFrac, 1.0);
@@ -1117,23 +1175,26 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 v_jet_consti_dRwrtJet_reco.push_back(dRwrtJet);
                 
                 
+                // Get matching electron
                 int iEle = -1;
                 int nearestEleIdx = -1;
-                double minDR = 9999;
+                int nearestElePt = -1;
+                //double minDR = 9999;
                 
                 for(const auto &ele : electrons_reco)
                 {
                     iEle++;
                     double dR = ROOT::Math::VectorUtil::DeltaR(ele.p4(), consti->p4());
                     
-                    if(dR < minDR)
+                    if(dR < Constants::CONSTI_EL_DR_MAX && ele.pt() > nearestElePt)
                     {
                         nearestEleIdx = iEle;
-                        minDR = dR;
+                        nearestElePt = ele.pt();
+                        //minDR = dR;
                     }
                 }
                 
-                if(nearestEleIdx >= 0 && minDR < 0.05)
+                if(nearestEleIdx >= 0)
                 {
                     edm::Ptr <pat::Electron> elePtr(handle_electron_reco, nearestEleIdx);
                     
@@ -1143,7 +1204,59 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     {
                         std::string varName = eleMvaVarManager.getName(iVar);
                         
-                        m_jet_consti_electronInfo_reco[varName].at(iConsti) = eleMvaVarManager.getValue(iVar, *elePtr, extraVariables);
+                        double val = eleMvaVarManager.getValue(iVar, *elePtr, extraVariables);
+                        
+                        if(!std::isnan(val) && !std::isinf(val))
+                        {
+                            m_jet_consti_electronInfo_reco[varName].at(iConsti) = val;
+                        }
+                    }
+                }
+                
+                
+                // Get matching muon
+                int iMu = -1;
+                int nearestMuIdx = -1;
+                int nearestMuPt = -1;
+                //double minDR = 9999;
+                
+                for(const auto &mu : muons_reco)
+                {
+                    iMu++;
+                    
+                    if (!(mu.isGlobalMuon() && mu.isPFMuon()))
+                    {
+                        continue;
+                    }
+                    
+                    double dR = ROOT::Math::VectorUtil::DeltaR(mu.p4(), consti->p4());
+                    
+                    if(dR < Constants::CONSTI_MU_DR_MAX && mu.pt() > nearestMuPt)
+                    {
+                        nearestMuIdx = iMu;
+                        nearestMuPt = mu.pt();
+                        //minDR = dR;
+                    }
+                }
+                
+                if(nearestMuIdx >= 0)
+                {
+                    edm::Ptr <pat::Muon> muPtr(handle_muon_reco, nearestMuIdx);
+                    
+                    //printf("Muon segmentCompatibility %f \n", muPtr->segmentCompatibility());
+                    
+                    std::vector <float> extraVariables = muMvaVarHelper.getAuxVariables(muPtr, iEvent);
+                    
+                    for(int iVar = 0; iVar < muMvaVarManager.getNVars(); iVar++)
+                    {
+                        std::string varName = muMvaVarManager.getName(iVar);
+                        
+                        double val = muMvaVarManager.getValue(iVar, *muPtr, extraVariables);
+                        
+                        if(!std::isnan(val) && !std::isinf(val))
+                        {
+                            m_jet_consti_muonInfo_reco[varName].at(iConsti) = val;
+                        }
                     }
                 }
             }
@@ -1188,6 +1301,13 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 std::string varName = eleMvaVarManager.getName(iVar);
                 
                 jetInfo->m_jet_consti_electronInfo_reco[varName].push_back(m_jet_consti_electronInfo_reco[varName]);
+            }
+            
+            for(int iVar = 0; iVar < muMvaVarManager.getNVars(); iVar++)
+            {
+                std::string varName = muMvaVarManager.getName(iVar);
+                
+                jetInfo->m_jet_consti_muonInfo_reco[varName].push_back(m_jet_consti_muonInfo_reco[varName]);
             }
         }
         

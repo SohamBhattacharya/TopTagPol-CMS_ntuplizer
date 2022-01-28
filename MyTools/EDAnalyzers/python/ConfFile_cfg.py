@@ -103,6 +103,13 @@ options.register("eleMvaVariablesFile",
     "MVA variables file" # Description
 )
 
+options.register("muMvaVariablesFile",
+    "MyTools/EDAnalyzers/data/MuonVariables.txt", # Default value
+    VarParsing.VarParsing.multiplicity.singleton, # singleton or list
+    VarParsing.VarParsing.varType.string, # string, int, or float
+    "MVA variables file" # Description
+)
+
 options.register("trace",
     0, # Default value
     VarParsing.VarParsing.multiplicity.singleton, # singleton or list
@@ -307,6 +314,7 @@ process.treeMaker = cms.EDAnalyzer(
     isGunSample = cms.bool(bool(options.isGunSample)),
     
     eleMvaVariablesFile = cms.string(options.eleMvaVariablesFile),
+    muMvaVariablesFile = cms.string(options.muMvaVariablesFile),
     
     ############################## GEN ##############################
     

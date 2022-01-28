@@ -173,6 +173,7 @@ namespace TreeOutputInfo
         
         
         std::unordered_map <std::string, std::vector <std::vector <double> > > m_jet_consti_electronInfo_reco;
+        std::unordered_map <std::string, std::vector <std::vector <double> > > m_jet_consti_muonInfo_reco;
         
         
         JetInfo(const edm::ParameterSet &jetPSet, edm::ConsumesCollector &ccollector)
@@ -464,6 +465,23 @@ namespace TreeOutputInfo
         }
         
         
+        void createMuonBranches(TTree *tree, const MVAVariableManager <pat::Muon> &muMvaVarManager)
+        {
+            for(int iVar = 0; iVar < muMvaVarManager.getNVars(); iVar++)
+            {
+                char brName[2000];
+                sprintf(brName, "jet_%s_consti_%s_reco", str_jetName.c_str(), muMvaVarManager.getName(iVar).c_str());
+                
+                std::string varName = muMvaVarManager.getName(iVar);
+                
+                std::vector <std::vector <double> > v_temp;
+                m_jet_consti_muonInfo_reco[varName] = v_temp;
+                
+                tree->Branch(brName, &m_jet_consti_muonInfo_reco[varName]);
+            }
+        }
+        
+        
         void clear()
         {
             jet_n_reco = 0;
@@ -550,6 +568,11 @@ namespace TreeOutputInfo
             
             
             for(auto &kv : m_jet_consti_electronInfo_reco)
+            {
+                kv.second.clear();
+            }
+            
+            for(auto &kv : m_jet_consti_muonInfo_reco)
             {
                 kv.second.clear();
             }
@@ -872,7 +895,8 @@ namespace TreeOutputInfo
             const edm::ParameterSet &jetPSet,
             edm::ConsumesCollector &ccollector,
             TTree *tree,
-            const MVAVariableManager <reco::GsfElectron> &eleMvaVarManager
+            const MVAVariableManager <reco::GsfElectron> &eleMvaVarManager,
+            const MVAVariableManager <pat::Muon> &muMvaVarManager
         )
         {
             JetInfo *jetInfo = new JetInfo(jetPSet, ccollector);
@@ -885,6 +909,7 @@ namespace TreeOutputInfo
             
             jetInfo->createBranches(tree);
             jetInfo->createElectronBranches(tree, eleMvaVarManager);
+            jetInfo->createMuonBranches(tree, muMvaVarManager);
             
             m_jetInfo[jetInfo->str_jetName] = jetInfo;
             

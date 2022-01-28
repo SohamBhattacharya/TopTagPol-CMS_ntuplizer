@@ -22,6 +22,11 @@ namespace Constants
     //const double LARGEVAL_POS = std::numeric_limits<double>::max();
     const double LARGEVAL_POS = +99999;
     const double LARGEVAL_NEG = -99999;
+    
+    const double DEFAULT_BRANCH_ENTRY = -99;
+    
+    const double CONSTI_EL_DR_MAX = 0.01;
+    const double CONSTI_MU_DR_MAX = 0.01;
 }
 
 
