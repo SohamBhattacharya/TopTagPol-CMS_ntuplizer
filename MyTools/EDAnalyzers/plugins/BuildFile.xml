@@ -1,9 +1,7 @@
 <use name="Calibration/IsolatedParticles"/>
-<use name="CommonTools/Egamma"/>
 <use name="CommonTools/MVAUtils"/>
 <use name="CommonTools/UtilAlgos"/>
 <use name="CommonTools/Utils"/>
-<use name="CondFormats/GBRForest"/>
 <use name="DataFormats/Common"/>
 <use name="DataFormats/EgammaCandidates"/>
 <use name="DataFormats/EgammaReco"/>

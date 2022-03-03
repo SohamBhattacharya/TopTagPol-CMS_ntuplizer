@@ -448,7 +448,7 @@ namespace TreeOutputInfo
         }
         
         
-        void createElectronBranches(TTree *tree, const MVAVariableManager <reco::GsfElectron> &eleMvaVarManager)
+        void createElectronBranches(TTree *tree, const MVAVariableManager <pat::Electron> &eleMvaVarManager)
         {
             for(int iVar = 0; iVar < eleMvaVarManager.getNVars(); iVar++)
             {
@@ -895,7 +895,7 @@ namespace TreeOutputInfo
             const edm::ParameterSet &jetPSet,
             edm::ConsumesCollector &ccollector,
             TTree *tree,
-            const MVAVariableManager <reco::GsfElectron> &eleMvaVarManager,
+            const MVAVariableManager <pat::Electron> &eleMvaVarManager,
             const MVAVariableManager <pat::Muon> &muMvaVarManager
         )
         {

@@ -42,5 +42,8 @@ ele_psEoverEraw                    superCluster.preshowerEnergy/superCluster.raw
 ele_pfPhotonIso                    pfIsolationVariables.sumPhotonEt                             None      None
 ele_pfChargedHadIso                pfIsolationVariables.sumChargedHadronPt                      None      None
 ele_pfNeutralHadIso                pfIsolationVariables.sumNeutralHadronEt                      None      None
+ele_pfPhotonMiniIso                miniPFIsolation.photonIso                                    None      None
+ele_pfChargedHadMiniIso            miniPFIsolation.chargedHadronIso                             None      None
+ele_pfNeutralHadMiniIso            miniPFIsolation.neutralHadronIso                             None      None
 #rho                                fixedGridRhoFastjetAll                                       None      None
 

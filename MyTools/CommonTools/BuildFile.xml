@@ -4,6 +4,7 @@
 <use   name="DataFormats/EgammaCandidates"/>
 <use   name="DataFormats/PatCandidates"/>
 <use   name="Geometry/CaloGeometry"/>
+<use   name="RecoEgamma/EgammaTools"/>
 <use   name="RecoLocalCalo/HGCalRecAlgos"/>
 <use   name="clhep"/>
 <use   name="root"/>

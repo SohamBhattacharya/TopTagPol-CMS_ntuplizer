@@ -162,11 +162,11 @@ class TreeMaker : public edm::one::EDAnalyzer<edm::one::SharedResources>
     edm::EDGetTokenT <std::vector <pat::Electron> > tok_electron_reco;
     
     std::string eleMvaVariablesFile;
-    //MVAVariableManager <pat::Electron> eleMvaVarManager;
-    MVAVariableManager <reco::GsfElectron> eleMvaVarManager;
+    MVAVariableManager <pat::Electron> eleMvaVarManager;
+    //MVAVariableManager <reco::GsfElectron> eleMvaVarManager;
     
-    //MVAVariableHelper <pat::Electron> eleMvaVarHelper;
-    MVAVariableHelper <reco::GsfElectron> eleMvaVarHelper;
+    MVAVariableHelper <pat::Electron> eleMvaVarHelper;
+    //MVAVariableHelper <reco::GsfElectron> eleMvaVarHelper;
     
     
     // Muons //
@@ -707,7 +707,7 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ////pat::PFCandidateFwdPtrCollection iparticlesRef;
             //std::vector<reco::PFCandidatePtr> iparticles = cj->getPFConstituents();
             
-            //if(debug)
+            if(debug)
             {
                 printf(
                     "[%llu] "
@@ -734,13 +734,27 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             
             auto const &v_jet_consti = jet.getJetConstituents();
             
+            //std::vector <int> v_jet_consti_PtSortedIdx(v_jet_consti.size());
+            //std::iota(v_jet_consti_PtSortedIdx.begin(), v_jet_consti_PtSortedIdx.end(), 0);
+            //
+            //std::sort(
+            //    v_jet_consti_PtSortedIdx.begin(), v_jet_consti_PtSortedIdx.end(),
+            //    [&](int idx1, int idx2)
+            //    {
+            //        return (v_jet_consti[idx1]->pt() > v_jet_consti[idx2]->pt());
+            //    }
+            //);
+            
             int iConsti = -1;
             int consti_n = 0;
             double constiE_sum = 0;
             
             for(auto const &consti : v_jet_consti)
+            //for(int &sortedIdx : v_jet_consti_PtSortedIdx)
             {
                 iConsti++;
+                
+                //auto const &consti = v_jet_consti.at(sortedIdx);
                 
                 fastjet::PseudoJet fj_pseudoJet(
                     consti->px(),
@@ -750,11 +764,14 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 );
                 
                 fj_pseudoJet.set_user_index(iConsti);
+                //fj_pseudoJet.set_user_index(sortedIdx);
                 
                 fj_input_jet.push_back(fj_pseudoJet);
                 
                 consti_n++;
                 constiE_sum += consti->energy();
+                
+                //printf("    consti %d/%d: sortedIdx %d, pT %0.2f, \n", iConsti, (int) v_jet_consti.size(), sortedIdx, consti->pt());
             }
             
             fastjet::ClusterSequence fj_jet_clustSeq(fj_input_jet, *fj_akJetReclusterDef);
@@ -1063,17 +1080,35 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             //}
             
             
-            for(int iConsti = 0; iConsti < nConsti; iConsti++)
+            ////std::vector <fastjet::PseudoJet> v_fj_consti_sortedByPt = sorted_by_pt(fj_image.constituents());
+            
+            std::vector <int> v_jet_consti_PtSortedIdx(nConsti);
+            std::iota(v_jet_consti_PtSortedIdx.begin(), v_jet_consti_PtSortedIdx.end(), 0);
+            
+            std::sort(
+                v_jet_consti_PtSortedIdx.begin(), v_jet_consti_PtSortedIdx.end(),
+                [&](int idx1, int idx2)
+                {
+                    return (fj_image.constituents()[idx1].pt() > fj_image.constituents()[idx2].pt());
+                }
+            );
+            
+            //for(int iConsti = 0; iConsti < nConsti; iConsti++)
+            for(int iConsti : v_jet_consti_PtSortedIdx)
             {
+                ////fastjet::PseudoJet pseudoJet_consti = v_fj_consti_sortedByPt.at(iConsti);
                 fastjet::PseudoJet pseudoJet_consti = fj_image.constituents().at(iConsti);
+                int idx = pseudoJet_consti.user_index();
+                const auto &consti = v_jet_consti.at(idx);
+                
+                if(debug)
+                {
+                    printf("    consti idx %d (total %d): user_index %d, pT %0.2f, \n", iConsti, (int) nConsti, idx, consti->pt());
+                }
                 
                 double x_LBGS = v_consti_boosted.at(iConsti).py() / v_consti_boosted.at(iConsti).e();
                 double y_LBGS = v_consti_boosted.at(iConsti).pz() / v_consti_boosted.at(iConsti).e();
                 double enFrac = v_consti_boosted.at(iConsti).e() / jetInfo->jetLorentzBoost_e0;
-                
-                int idx = pseudoJet_consti.user_index();
-                
-                const auto &consti = v_jet_consti.at(idx);
                 
                 //edm::Ptr <reco::PFCandidate> constiPF(consti);
                 //std::cout << iConsti << " " << constiPF.isNonnull() << "\n"; std::fflush(stdout);
@@ -1138,10 +1173,13 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                         double svdxy = std::fabs(consti->bestTrack()->dxy(sv.position()));
                         double svdz = std::fabs(consti->bestTrack()->dz(sv.position()));
                         
-                        if(svdxy_min < 0 || svdxy < svdxy_min)
+                        if(!std::isnan(svdxy) && !std::isinf(svdxy) && !std::isnan(svdz) && !std::isinf(svdz))
                         {
-                            svdxy_min = svdxy;
-                            svdz_min = svdz;
+                            if(svdxy_min < 0 || svdxy < svdxy_min)
+                            {
+                                svdxy_min = svdxy;
+                                svdz_min = svdz;
+                            }
                         }
                     }
                 }

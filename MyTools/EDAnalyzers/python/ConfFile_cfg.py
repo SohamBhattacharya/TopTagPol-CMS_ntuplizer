@@ -74,6 +74,13 @@ options.register("eventRange",
     "Syntax: Run1:Event1-Run2:Event2 Run3:Event3-Run4:Event4(includes both)" # Description
 )
 
+options.register("debug",
+    0, # Default value
+    VarParsing.VarParsing.multiplicity.singleton, # singleton or list
+    VarParsing.VarParsing.varType.int, # string, int, or float
+    "Print debug statements" # Description
+)
+
 options.register("debugFile",
     0, # Default value
     VarParsing.VarParsing.multiplicity.singleton, # singleton or list
@@ -310,7 +317,7 @@ process.treeMaker = cms.EDAnalyzer(
     "TreeMaker",
     
     ############################## My stuff ##############################
-    debug = cms.bool(False),
+    debug = cms.bool(bool(options.debug)),
     isGunSample = cms.bool(bool(options.isGunSample)),
     
     eleMvaVariablesFile = cms.string(options.eleMvaVariablesFile),

@@ -161,7 +161,7 @@ namespace Common
             
             if(daughter->isLastCopy() && std::find(v_invId.begin(), v_invId.end(), daughterId) != v_invId.end())
             {
-                printf("[%d] Got inv (%d): id %d, mother id %d, status %d, p4 (%0.2f, %+0.2f, %+0.2f, %+0.2f) \n", depth, (int) iDaughter, daughterId, id, daughter->status(), daughter->p4().E(), daughter->p4().Px(), daughter->p4().Py(), daughter->p4().Pz());
+                //printf("[%d] Got inv (%d): id %d, mother id %d, status %d, p4 (%0.2f, %+0.2f, %+0.2f, %+0.2f) \n", depth, (int) iDaughter, daughterId, id, daughter->status(), daughter->p4().E(), daughter->p4().Px(), daughter->p4().Py(), daughter->p4().Pz());
                 p4_inv += daughter->p4();
             }
             
