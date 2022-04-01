@@ -22,31 +22,36 @@
 # include <memory>
 
 // user include files
+
 # include "CommonTools/UtilAlgos/interface/TFileService.h"
 # include "DataFormats/CaloTowers/interface/CaloTowerDefs.h"
+# include "DataFormats/Candidate/interface/VertexCompositePtrCandidate.h"
 # include "DataFormats/Common/interface/MapOfVectors.h"
 # include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
 # include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 # include "DataFormats/EgammaCandidates/interface/Photon.h"
 # include "DataFormats/FWLite/interface/ESHandle.h"
+# include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
 # include "DataFormats/GsfTrackReco/interface/GsfTrack.h"
 # include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 # include "DataFormats/JetReco/interface/PFJet.h"
 # include "DataFormats/Math/interface/LorentzVector.h"
+# include "DataFormats/Math/interface/deltaR.h"
 # include "DataFormats/ParticleFlowReco/interface/PFRecHit.h"
+# include "DataFormats/PatCandidates/interface/Electron.h"
 # include "DataFormats/PatCandidates/interface/Jet.h"
 # include "DataFormats/PatCandidates/interface/MET.h"
 # include "DataFormats/PatCandidates/interface/Muon.h"
-# include "DataFormats/PatCandidates/interface/Electron.h"
-# include "DataFormats/PatCandidates/interface/Photon.h"
 # include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
+# include "DataFormats/PatCandidates/interface/Photon.h"
 # include "DataFormats/RecoCandidate/interface/RecoCandidate.h"
 # include "DataFormats/TrackReco/interface/Track.h"
 # include "DataFormats/TrackReco/interface/TrackFwd.h"
 # include "DataFormats/VertexReco/interface/Vertex.h"
+# include "DataFormats/VertexReco/interface/VertexFwd.h"
 # include "FWCore/Framework/interface/ConsumesCollector.h"
-# include "FWCore/Framework/interface/Event.h"
 # include "FWCore/Framework/interface/ESHandle.h"
+# include "FWCore/Framework/interface/Event.h"
 # include "FWCore/Framework/interface/Frameworkfwd.h"
 # include "FWCore/Framework/interface/MakerMacros.h"
 # include "FWCore/Framework/interface/one/EDAnalyzer.h"
@@ -63,6 +68,7 @@
 # include "SimDataFormats/CaloHit/interface/PCaloHit.h"
 # include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 # include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+# include "TrackingTools/IPTools/interface/IPTools.h"
 
 # include <Compression.h>
 # include <Math/VectorUtil.h>
@@ -826,24 +832,85 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             int iSV = -1;
             std::vector <const reco::VertexCompositePtrCandidate*> v_secVtx_inJet;
             
+            std::vector <double> v_jet_sv_pT_reco;
+            std::vector <double> v_jet_sv_eta_reco;
+            std::vector <double> v_jet_sv_phi_reco;
+            std::vector <double> v_jet_sv_m_reco;
+            std::vector <double> v_jet_sv_E_reco;
+            std::vector <double> v_jet_sv_etarel_reco;
+            std::vector <double> v_jet_sv_phirel_reco;
+            std::vector <double> v_jet_sv_deltaR_reco;
+            std::vector <double> v_jet_sv_ntracks_reco;
+            std::vector <double> v_jet_sv_chi2_reco;
+            std::vector <double> v_jet_sv_ndf_reco;
+            std::vector <double> v_jet_sv_normchi2_reco;
+            std::vector <double> v_jet_sv_dxy_reco;
+            std::vector <double> v_jet_sv_dxyerr_reco;
+            std::vector <double> v_jet_sv_dxysig_reco;
+            std::vector <double> v_jet_sv_d3d_reco;
+            std::vector <double> v_jet_sv_d3derr_reco;
+            std::vector <double> v_jet_sv_d3dsig_reco;
+            std::vector <double> v_jet_sv_costhetasvpv_reco;
+            
             for(const auto &sv : v_secondaryVertex)
             {
                 iSV++;
                 
-                math::XYZTLorentzVectorD lv_temp(jet_4mom.px(), jet_4mom.py(), jet_4mom.pz(), jet_4mom.e());
+                //math::XYZTLorentzVectorD lv_temp(jet_4mom.px(), jet_4mom.py(), jet_4mom.pz(), jet_4mom.e());
                 
-                double secVtxDR = ROOT::Math::VectorUtil::DeltaR(v_secVtxDir.at(iSV), lv_temp);
+                //double secVtxDR = ROOT::Math::VectorUtil::DeltaR(v_secVtxDir.at(iSV), lv_temp);
                 
                 //printf("dR(jet %d, sv %d) %f \n", nJet, iSV+1, secVtxDR);
                 
                 // A somewhat relaxed threshold
-                if(secVtxDR < jet.maxDistance() * 1.5)
+                //if(secVtxDR < jet.maxDistance() * 1.5)
+                if(nGoodVertex && reco::deltaR(sv, jet) < jetInfo->rParam)
                 {
                     v_secVtx_inJet.push_back(&sv);
+                    
+                    v_jet_sv_pT_reco.push_back(                                 sv.pt());
+                    v_jet_sv_eta_reco.push_back(                                sv.eta());
+                    v_jet_sv_phi_reco.push_back(                                sv.phi());
+                    v_jet_sv_m_reco.push_back(                                  sv.mass());
+                    v_jet_sv_E_reco.push_back(                                  sv.energy());
+                    v_jet_sv_etarel_reco.push_back(                             std::fabs(sv.eta()-jet.eta()));
+                    v_jet_sv_phirel_reco.push_back(                             std::fabs(reco::deltaPhi(sv.phi(), jet.phi())));
+                    v_jet_sv_deltaR_reco.push_back(                             reco::deltaR(sv, jet));
+                    v_jet_sv_ntracks_reco.push_back(                            sv.numberOfDaughters());
+                    v_jet_sv_chi2_reco.push_back(                               sv.vertexChi2());
+                    v_jet_sv_ndf_reco.push_back(                                sv.vertexNdof());
+                    v_jet_sv_normchi2_reco.push_back(                           Common::catchInfsAndBound(sv.vertexNormalizedChi2(), 1000, -1000, 1000));
+                    v_jet_sv_dxy_reco.push_back(                                Common::vertexDxy(sv, pmVtx).value());
+                    v_jet_sv_dxyerr_reco.push_back(                             Common::catchInfsAndBound(Common::vertexDxy(sv, pmVtx).error()-2, 0, -2, 0));
+                    v_jet_sv_dxysig_reco.push_back(                             Common::catchInfsAndBound(Common::vertexDxy(sv, pmVtx).value()/Common::vertexDxy(sv, pmVtx).error() , 0, -1, 800));
+                    v_jet_sv_d3d_reco.push_back(                                Common::vertexD3d(sv, pmVtx).value());
+                    v_jet_sv_d3derr_reco.push_back(                             Common::catchInfsAndBound(Common::vertexD3d(sv, pmVtx).error()-2, 0, -2, 0));
+                    v_jet_sv_d3dsig_reco.push_back(                             Common::catchInfsAndBound(Common::vertexD3d(sv, pmVtx).value()/Common::vertexD3d(sv, pmVtx).error(), 0, -1, 800));
+                    v_jet_sv_costhetasvpv_reco.push_back(                       Common::vertexDdotP(sv, pmVtx)); // the pointing angle (i.e. the angle between the sum of the momentum
                 }
             }
             
             jetInfo->v_jet_nSecVtxInJet_reco.push_back(v_secVtx_inJet.size());
+            
+            jetInfo->vv_jet_sv_pT_reco.push_back(v_jet_sv_pT_reco);
+            jetInfo->vv_jet_sv_eta_reco.push_back(v_jet_sv_eta_reco);
+            jetInfo->vv_jet_sv_phi_reco.push_back(v_jet_sv_phi_reco);
+            jetInfo->vv_jet_sv_m_reco.push_back(v_jet_sv_m_reco);
+            jetInfo->vv_jet_sv_E_reco.push_back(v_jet_sv_E_reco);
+            jetInfo->vv_jet_sv_etarel_reco.push_back(v_jet_sv_etarel_reco);
+            jetInfo->vv_jet_sv_phirel_reco.push_back(v_jet_sv_phirel_reco);
+            jetInfo->vv_jet_sv_deltaR_reco.push_back(v_jet_sv_deltaR_reco);
+            jetInfo->vv_jet_sv_ntracks_reco.push_back(v_jet_sv_ntracks_reco);
+            jetInfo->vv_jet_sv_chi2_reco.push_back(v_jet_sv_chi2_reco);
+            jetInfo->vv_jet_sv_ndf_reco.push_back(v_jet_sv_ndf_reco);
+            jetInfo->vv_jet_sv_normchi2_reco.push_back(v_jet_sv_normchi2_reco);
+            jetInfo->vv_jet_sv_dxy_reco.push_back(v_jet_sv_dxy_reco);
+            jetInfo->vv_jet_sv_dxyerr_reco.push_back(v_jet_sv_dxyerr_reco);
+            jetInfo->vv_jet_sv_dxysig_reco.push_back(v_jet_sv_dxysig_reco);
+            jetInfo->vv_jet_sv_d3d_reco.push_back(v_jet_sv_d3d_reco);
+            jetInfo->vv_jet_sv_d3derr_reco.push_back(v_jet_sv_d3derr_reco);
+            jetInfo->vv_jet_sv_d3dsig_reco.push_back(v_jet_sv_d3dsig_reco);
+            jetInfo->vv_jet_sv_costhetasvpv_reco.push_back(v_jet_sv_costhetasvpv_reco);
             
             
             fastjet::PseudoJet fj_subStruc = fj_jet;
@@ -1101,9 +1168,13 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 int idx = pseudoJet_consti.user_index();
                 const auto &consti = v_jet_consti.at(idx);
                 
+                const pat::PackedCandidate* consti_pc = dynamic_cast<const pat::PackedCandidate*>(consti.get());
+                //const pat::PackedCandidate* consti_pc = dynamic_cast<const pat::PackedCandidate*>(jet.daughter(idx));
+                
                 if(debug)
                 {
                     printf("    consti idx %d (total %d): user_index %d, pT %0.2f, \n", iConsti, (int) nConsti, idx, consti->pt());
+                    //printf("    hcalFraction %0.4f, \n", consti_pc->hcalFraction());
                 }
                 
                 double x_LBGS = v_consti_boosted.at(iConsti).py() / v_consti_boosted.at(iConsti).e();
@@ -1156,8 +1227,11 @@ void TreeMaker::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     pvdz = std::fabs(consti->bestTrack()->dz(pmVtx.position()));
                 }
                 
-                v_jet_consti_pvdxy_reco.push_back(pvdxy);
-                v_jet_consti_pvdz_reco.push_back(pvdz);
+                if(!std::isnan(pvdxy) && !std::isinf(pvdxy) && !std::isnan(pvdz) && !std::isinf(pvdz))
+                {
+                    v_jet_consti_pvdxy_reco.push_back(pvdxy);
+                    v_jet_consti_pvdz_reco.push_back(pvdz);
+                }
                 
                 
                 // wrt SV

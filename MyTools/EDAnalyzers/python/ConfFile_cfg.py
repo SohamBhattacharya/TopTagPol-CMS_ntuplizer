@@ -235,53 +235,31 @@ if (options.depGraph) :
 
 from JMEAnalysis.JetToolbox.jetToolbox_cff import jetToolbox
 
-jetToolbox(
-    proc = process,
-    jetType = "ak8",
-    jetSequence = "jetSequenceAK8",
-    outputFile = "noOutput",
-    PUMethod = "Puppi",
-    dataTier = "miniAOD",
-    runOnMC = True,
-    #JETCorrPayload = "",
-    #addSoftDrop = True,
-)
+l_akJetPuppi_rParam = [4, 8, 10, 15]
+l_jetPuppiCollection = []
 
-jetToolbox(
-    proc = process,
-    jetType = "ak10",
-    jetSequence = "jetSequenceAK10",
-    outputFile = "noOutput",
-    PUMethod = "Puppi",
-    dataTier = "miniAOD",
-    runOnMC = True,
-    #JETCorrPayload = "",
-    #addSoftDrop = True,
-)
-
-jetToolbox(
-    proc = process,
-    jetType = "ak12",
-    jetSequence = "jetSequenceAK12",
-    outputFile = "noOutput",
-    PUMethod = "Puppi",
-    dataTier = "miniAOD",
-    runOnMC = True,
-    #JETCorrPayload = "",
-    #addSoftDrop = True,
-)
-
-jetToolbox(
-    proc = process,
-    jetType = "ak15",
-    jetSequence = "jetSequenceAK15",
-    outputFile = "noOutput",
-    PUMethod = "Puppi",
-    dataTier = "miniAOD",
-    runOnMC = True,
-    #JETCorrPayload = "",
-    #addSoftDrop = True,
-)
+for rParam in l_akJetPuppi_rParam :
+    
+    # AK4 is already present
+    if (rParam == 4) :
+        
+        l_jetPuppiCollection.append("slimmedJetsPuppi")
+    
+    else :
+        
+        jetToolbox(
+            proc = process,
+            jetType = "ak%d" %(rParam),
+            jetSequence = "jetSequenceAK%d" %(rParam),
+            outputFile = "noOutput",
+            PUMethod = "Puppi",
+            dataTier = "miniAOD",
+            runOnMC = True,
+            #JETCorrPayload = "",
+            #addSoftDrop = True,
+        )
+        
+        l_jetPuppiCollection.append("selectedPatJetsAK%dPFPuppi" %(rParam))
 
 
 from RecoBTag.SecondaryVertex.bVertexFilter_cfi import *
@@ -299,6 +277,8 @@ process.bVertexFilter = cms.EDFilter(
 recoJetPSet = cms.PSet(
     jetCollection = cms.InputTag(""),
     
+    rParam = cms.double(0.0),
+    
     minPt = cms.double(100),
     
     apply_sd = cms.bool(True),
@@ -311,6 +291,29 @@ recoJetPSet = cms.PSet(
     
     maxTauN = cms.int32(4),
 )
+
+l_recoJetPSet = []
+
+for iJet in range(0, len(l_akJetPuppi_rParam)) :
+    
+    minPt = 100.0
+    
+    if (l_akJetPuppi_rParam[iJet] <= 4) :
+        
+        minPt = 10.0
+    
+    l_recoJetPSet.append(recoJetPSet.clone(
+        jetCollection = cms.InputTag(l_jetPuppiCollection[iJet]),
+        rParam = cms.double(l_akJetPuppi_rParam[iJet]/10.0),
+        minPt = cms.double(minPt),
+    ))
+    
+    l_recoJetPSet.append(recoJetPSet.clone(
+        jetCollection = cms.InputTag(l_jetPuppiCollection[iJet]),
+        rParam = cms.double(l_akJetPuppi_rParam[iJet]/10.0),
+        minPt = cms.double(minPt),
+        apply_sd = cms.bool(False),
+    ))
 
 
 process.treeMaker = cms.EDAnalyzer(
@@ -342,64 +345,7 @@ process.treeMaker = cms.EDAnalyzer(
     label_slimmedElectron = cms.InputTag("slimmedElectrons"),
     label_slimmedMuon = cms.InputTag("slimmedMuons"),
     
-    
-    v_recoJetPSet = cms.VPSet(
-        # AK4
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("slimmedJetsPuppi"),
-            minPt = cms.double(10),
-        ),
-        
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("slimmedJetsPuppi"),
-            minPt = cms.double(10),
-            apply_sd = cms.bool(False),
-        ),
-        
-        
-        # AK8
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("selectedPatJetsAK8PFPuppi"),
-        ),
-        
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("selectedPatJetsAK8PFPuppi"),
-            apply_sd = cms.bool(False),
-        ),
-        
-        
-        # AK10
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("selectedPatJetsAK10PFPuppi"),
-        ),
-        
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("selectedPatJetsAK10PFPuppi"),
-            apply_sd = cms.bool(False),
-        ),
-        
-        
-        # AK12
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("selectedPatJetsAK12PFPuppi"),
-        ),
-        
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("selectedPatJetsAK12PFPuppi"),
-            apply_sd = cms.bool(False),
-        ),
-        
-        
-        # AK15
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("selectedPatJetsAK15PFPuppi"),
-        ),
-        
-        recoJetPSet.clone(
-            jetCollection = cms.InputTag("selectedPatJetsAK15PFPuppi"),
-            apply_sd = cms.bool(False),
-        ),
-    )
+    v_recoJetPSet = cms.VPSet(l_recoJetPSet),
 )
 
 

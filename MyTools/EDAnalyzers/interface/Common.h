@@ -574,6 +574,51 @@ namespace Common
         
         return v_GStransformed_4mom;
     }
+    
+    
+    
+    // From: https://github.com/CMSDeepFlavour/DeepNTuples/blob/master/DeepNtuplizer/interface/ntuple_content.h
+    double catchInfs(double in, double replace_value){
+        if(in==in){
+            if(std::isinf(in))
+                return replace_value;
+            else if(in < -1e32 || in > 1e32)
+                return replace_value;
+            return in;
+        }
+        return replace_value;
+    }
+    
+    double catchInfsAndBound(double in, double replace_value, 
+            double lowerbound, double upperbound, const double offset=0){
+        double withoutinfs=catchInfs(in, replace_value);
+        if(withoutinfs+offset<lowerbound) return lowerbound;
+        if(withoutinfs+offset>upperbound) return upperbound;
+        //if(useoffsets)
+        withoutinfs+=offset;
+        return withoutinfs;
+    }
+    
+    Measurement1D vertexDxy(const reco::VertexCompositePtrCandidate &svcand, const reco::Vertex &pv)  {
+        VertexDistanceXY dist;
+        reco::Vertex::CovarianceMatrix csv; svcand.fillVertexCovariance(csv);
+        reco::Vertex svtx(svcand.vertex(), csv);
+        return dist.distance(svtx, pv);
+    }
+    
+    Measurement1D vertexD3d(const reco::VertexCompositePtrCandidate &svcand, const reco::Vertex &pv)  {
+        VertexDistance3D dist;
+        reco::Vertex::CovarianceMatrix csv; svcand.fillVertexCovariance(csv);
+        reco::Vertex svtx(svcand.vertex(), csv);
+        return dist.distance(svtx, pv);
+    }
+    
+    double vertexDdotP(const reco::VertexCompositePtrCandidate &sv, const reco::Vertex &pv)  {
+        reco::Candidate::Vector p = sv.momentum();
+        reco::Candidate::Vector d(sv.vx() - pv.x(), sv.vy() - pv.y(), sv.vz() - pv.z());
+        return p.Unit().Dot(d.Unit());
+    }
+    
 }
 
 

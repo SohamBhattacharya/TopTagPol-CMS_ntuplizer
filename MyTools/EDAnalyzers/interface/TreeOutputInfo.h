@@ -70,6 +70,8 @@ namespace TreeOutputInfo
         edm::InputTag tag_jet;
         edm::EDGetTokenT <std::vector <pat::Jet> > tok_jet;
         
+        double rParam;
+        
         double minPt;
         
         double jetRescale_m0;
@@ -132,6 +134,26 @@ namespace TreeOutputInfo
         
         std::vector <double> v_jet_nSecVtxInJet_reco;
         
+        std::vector <std::vector <double> > vv_jet_sv_pT_reco;
+        std::vector <std::vector <double> > vv_jet_sv_eta_reco;
+        std::vector <std::vector <double> > vv_jet_sv_phi_reco;
+        std::vector <std::vector <double> > vv_jet_sv_m_reco;
+        std::vector <std::vector <double> > vv_jet_sv_E_reco;
+        std::vector <std::vector <double> > vv_jet_sv_etarel_reco;
+        std::vector <std::vector <double> > vv_jet_sv_phirel_reco;
+        std::vector <std::vector <double> > vv_jet_sv_deltaR_reco;
+        std::vector <std::vector <double> > vv_jet_sv_ntracks_reco;
+        std::vector <std::vector <double> > vv_jet_sv_chi2_reco;
+        std::vector <std::vector <double> > vv_jet_sv_ndf_reco;
+        std::vector <std::vector <double> > vv_jet_sv_normchi2_reco;
+        std::vector <std::vector <double> > vv_jet_sv_dxy_reco;
+        std::vector <std::vector <double> > vv_jet_sv_dxyerr_reco;
+        std::vector <std::vector <double> > vv_jet_sv_dxysig_reco;
+        std::vector <std::vector <double> > vv_jet_sv_d3d_reco;
+        std::vector <std::vector <double> > vv_jet_sv_d3derr_reco;
+        std::vector <std::vector <double> > vv_jet_sv_d3dsig_reco;
+        std::vector <std::vector <double> > vv_jet_sv_costhetasvpv_reco;
+        
         std::vector <std::vector <double> >  vv_jet_tauN_reco;
         std::vector <std::vector <double> >  vv_jet_tauNratio_reco;
         
@@ -181,6 +203,8 @@ namespace TreeOutputInfo
             tag_jet = jetPSet.getParameter <edm::InputTag>("jetCollection");
             tok_jet = ccollector.consumes <std::vector <pat::Jet> >(tag_jet);
             
+            
+            rParam = jetPSet.getParameter <double>("rParam");
             
             // Kinematic cut
             minPt = jetPSet.getParameter <double>("minPt");
@@ -344,7 +368,65 @@ namespace TreeOutputInfo
             sprintf(brName, "jet_%s_nSecVtxInJet_reco", str_jetName.c_str());
             tree->Branch(brName, &v_jet_nSecVtxInJet_reco);
             
+            sprintf(brName, "jet_%s_sv_pT_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_pT_reco);
             
+            sprintf(brName, "jet_%s_sv_eta_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_eta_reco);
+            
+            sprintf(brName, "jet_%s_sv_phi_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_phi_reco);
+            
+            sprintf(brName, "jet_%s_sv_m_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_m_reco);
+            
+            sprintf(brName, "jet_%s_sv_E_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_E_reco);
+            
+            sprintf(brName, "jet_%s_sv_etarel_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_etarel_reco);
+            
+            sprintf(brName, "jet_%s_sv_phirel_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_phirel_reco);
+            
+            sprintf(brName, "jet_%s_sv_deltaR_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_deltaR_reco);
+            
+            sprintf(brName, "jet_%s_sv_ntracks_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_ntracks_reco);
+            
+            sprintf(brName, "jet_%s_sv_chi2_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_chi2_reco);
+            
+            sprintf(brName, "jet_%s_sv_ndf_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_ndf_reco);
+            
+            sprintf(brName, "jet_%s_sv_normchi2_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_normchi2_reco);
+            
+            sprintf(brName, "jet_%s_sv_dxy_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_dxy_reco);
+            
+            sprintf(brName, "jet_%s_sv_dxyerr_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_dxyerr_reco);
+            
+            sprintf(brName, "jet_%s_sv_dxysig_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_dxysig_reco);
+            
+            sprintf(brName, "jet_%s_sv_d3d_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_d3d_reco);
+            
+            sprintf(brName, "jet_%s_sv_d3derr_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_d3derr_reco);
+            
+            sprintf(brName, "jet_%s_sv_d3dsig_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_d3dsig_reco);
+            
+            sprintf(brName, "jet_%s_sv_costhetasvpv_reco", str_jetName.c_str());
+            tree->Branch(brName, &vv_jet_sv_costhetasvpv_reco);
+            
+            
+            //
             vv_jet_tauN_reco.resize(maxTauN+1, {});
             vv_jet_tauNratio_reco.resize(maxTauN+1, {});
             
@@ -523,6 +605,27 @@ namespace TreeOutputInfo
             v_jet_nearestGenZIsLeptonic_reco.clear();
             
             v_jet_nSecVtxInJet_reco.clear();
+            
+            vv_jet_sv_pT_reco.clear();
+            vv_jet_sv_eta_reco.clear();
+            vv_jet_sv_phi_reco.clear();
+            vv_jet_sv_m_reco.clear();
+            vv_jet_sv_E_reco.clear();
+            vv_jet_sv_etarel_reco.clear();
+            vv_jet_sv_phirel_reco.clear();
+            vv_jet_sv_deltaR_reco.clear();
+            vv_jet_sv_ntracks_reco.clear();
+            vv_jet_sv_chi2_reco.clear();
+            vv_jet_sv_ndf_reco.clear();
+            vv_jet_sv_normchi2_reco.clear();
+            vv_jet_sv_dxy_reco.clear();
+            vv_jet_sv_dxyerr_reco.clear();
+            vv_jet_sv_dxysig_reco.clear();
+            vv_jet_sv_d3d_reco.clear();
+            vv_jet_sv_d3derr_reco.clear();
+            vv_jet_sv_d3dsig_reco.clear();
+            vv_jet_sv_costhetasvpv_reco.clear();
+            
             
             for(int iTauN = 0; iTauN <= maxTauN; iTauN++)
             {
